@@ -1,0 +1,24 @@
+{
+  "name": "Dracula chat bot",
+  "version": "1.0.0",
+  "description": "A WhatsApp bot created using Node.js",
+  "main": "index.js",
+  "scripts": {
+    "start": "pm2 start index.js --deep-monitoring --attach --name Draculabot",
+    "stop": "pm2 stop Draculabot",
+    "restart": "pm2 restart Draculabot"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "6.6.0",
+    "@adiwajshing/keyed-db": "^0.2.4",
+    "pino": "^7.0.5",
+    "pm2": "^5.2.0",
+    "express": "latest",
+    "axios": "^1.2.5",
+    "google-translate-api": "^2.3.0",
+    "node-schedule": "^2.1.0",
+    "fs-extra": "^11.1.0",
+    "path": "^0.12.7",
+    "qrcode-terminal": "^0.12.0"
+  }
+}
