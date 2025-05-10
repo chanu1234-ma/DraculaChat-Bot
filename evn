@@ -1,0 +1,66 @@
+require('dotenv').config();
+const {
+  default: makeWASocket,
+  useSingleFileAuthState,
+  DisconnectReason,
+  fetchLatestBaileysVersion,
+  makeInMemoryStore
+} = require('@whiskeysockets/baileys');
+
+const { Boom } = require('@hapi/boom');
+const P = require('pino');
+const fs = require('fs');
+
+// Load environment variables
+const BOT_NAME = process.env.BOT_NAME || 'DraculaBot';
+const ALIVE_IMG = process.env.ALIVE_IMG || 'https://i.imgur.com/DraculaImage.jpg';
+const ALIVE_MSG = process.env.ALIVE_MSG || '🧛‍♂️ Dracula Bot is Alive and Watching You at Midnight! 🌙';
+const PREFIX = process.env.PREFIX || '.';
+const AUTH_FILE = process.env.AUTH_FILE || './auth_info.json';
+
+const { state, saveState } = useSingleFileAuthState(AUTH_FILE);
+
+async function startBot() {
+  const { version } = await fetchLatestBaileysVersion();
+
+  const sock = makeWASocket({
+    version,
+    auth: state,
+    printQRInTerminal: true,
+    logger: P({ level: 'silent' }),
+    browser: [BOT_NAME, 'Safari', '1.0']
+  });
+
+  sock.ev.on('creds.update', saveState);
+
+  sock.ev.on('connection.update', (update) => {
+    const { connection, lastDisconnect } = update;
+    if (connection === 'close') {
+      const shouldReconnect =
+        (lastDisconnect.error = Boom(lastDisconnect?.error))?.output?.statusCode !== DisconnectReason.loggedOut;
+      console.log('connection closed due to', lastDisconnect.error, ', reconnecting', shouldReconnect);
+      if (shouldReconnect) startBot();
+    } else if (connection === 'open') {
+      console.log(`✅ ${BOT_NAME} Connected Successfully!`);
+    }
+  });
+
+  sock.ev.on('messages.upsert', async ({ messages }) => {
+    const msg = messages[0];
+    if (!msg.message || msg.key.fromMe) return;
+
+    const messageContent = msg.message.conversation || msg.message.extendedTextMessage?.text;
+    if (!messageContent) return;
+
+    const command = messageContent.trim().toLowerCase();
+
+    if (command === `${PREFIX}alive`) {
+      await sock.sendMessage(msg.key.remoteJid, {
+        image: { url: ALIVE_IMG },
+        caption: ALIVE_MSG
+      }, { quoted: msg });
+    }
+  });
+}
+
+startBot();
